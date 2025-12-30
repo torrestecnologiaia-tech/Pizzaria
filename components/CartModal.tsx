@@ -35,35 +35,43 @@ const CartModal: React.FC<CartModalProps> = ({ isOpen, onClose, items, onUpdateQ
   };
 
   const handleFinalize = () => {
-    const itemsList = items.map(item => {
-      let addonText = '';
-      if (item.selectedAddons && item.selectedAddons.length > 0) {
-        addonText = `%0A   └─ _Adicionais: ${item.selectedAddons.map(a => a.name).join(', ')}_`;
-      }
-      return `• ${item.quantity}x *${item.name}* - R$ ${(item.price * item.quantity).toFixed(2).replace('.', ',')}${addonText}`;
-    }).join('%0A');
+    const separator = "---------------------------------------";
+    const shopName = settings.shopName?.toUpperCase() || "HOTT ROSSI";
     
-    let paymentLabel = '';
+    const itemsList = items.map(item => {
+      let addonText = "";
+      if (item.selectedAddons && item.selectedAddons.length > 0) {
+        addonText = "%0A   └─ _Adicionais: " + item.selectedAddons.map(a => a.name).join(", ") + "_";
+      }
+      return "• " + item.quantity + "x *" + item.name + "* - R$ " + (item.price * item.quantity).toFixed(2).replace(".", ",") + addonText;
+    }).join("%0A%0A");
+    
+    let paymentLabel = "";
     switch(formData.pagamento) {
-      case 'pix': paymentLabel = 'Pix (Chave CPF)'; break;
-      case 'credito': paymentLabel = 'Cartão de Crédito'; break;
-      case 'debito': paymentLabel = 'Cartão de Débito'; break;
-      case 'dinheiro': paymentLabel = `Dinheiro ${formData.troco ? `(Troco para R$ ${formData.troco})` : '(Não precisa de troco)'}`; break;
+      case "pix": paymentLabel = "💠 *Pix*"; break;
+      case "credito": paymentLabel = "💳 *Cartão de Crédito*"; break;
+      case "debito": paymentLabel = "💳 *Cartão de Débito*"; break;
+      case "dinheiro": paymentLabel = "💵 *Dinheiro* " + (formData.troco ? "(Troco para R$ " + formData.troco + ")" : "(Não precisa de troco)"); break;
     }
 
-    const message = `*NOVO PEDIDO - ${settings.shopName?.toUpperCase() || 'HOTT ROSSI'}*%0A%0A` +
-      `*🛒 ITENS:*%0A${itemsList}%0A%0A` +
-      `*💰 TOTAL:* R$ ${total.toFixed(2).replace('.', ',')}%0A%0A` +
-      `*📍 ENTREGA:*%0A` +
-      `👤 Cliente: ${formData.nome}%0A` +
-      `🏠 Rua: ${formData.rua}, nº ${formData.numero}%0A` +
-      `🏘️ Bairro: ${formData.bairro}%0A` +
-      `🎯 Ref: ${formData.referencia || 'N/A'}%0A%0A` +
-      `*💳 PAGAMENTO:*%0A` +
-      `${paymentLabel}`;
+    const message = "🌟 *NOVO PEDIDO - " + shopName + "* 🌟" + "%0A" +
+      separator + "%0A%0A" +
+      "📋 *ITENS:*%0A" + itemsList + "%0A%0A" +
+      separator + "%0A" +
+      "💰 *TOTAL: R$ " + total.toFixed(2).replace(".", ",") + "*%0A" +
+      separator + "%0A%0A" +
+      "📍 *DADOS DE ENTREGA:*%0A" +
+      "👤 *Nome:* " + formData.nome + "%0A" +
+      "🏠 *Endereço:* " + formData.rua + ", nº " + formData.numero + "%0A" +
+      "🏘️ *Bairro:* " + formData.bairro + "%0A" +
+      "🎯 *Ref:* " + (formData.referencia || "N/A") + "%0A%0A" +
+      "💳 *FORMA DE PAGAMENTO:*%0A" +
+      paymentLabel + "%0A%0A" +
+      separator + "%0A" +
+      "🙏 _Obrigado pela preferência!_";
 
     const phone = settings.whatsappNumber || "5511999999999";
-    window.open(`https://wa.me/${phone}?text=${message}`, '_blank');
+    window.open("https://wa.me/" + phone + "?text=" + message, "_blank");
   };
 
   const isFormValid = formData.nome && formData.rua && formData.numero && formData.bairro && formData.pagamento;

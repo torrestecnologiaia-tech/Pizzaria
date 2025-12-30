@@ -1,3 +1,4 @@
+import { supabase } from "./lib/supabase";
 
 import React, { useState, useMemo, useEffect } from 'react';
 import Header from './components/Header';
@@ -14,38 +15,16 @@ const App: React.FC = () => {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isAdminOpen, setIsAdminOpen] = useState(false);
-
-  const [allProducts, setAllProducts] = useState<Product[]>(() => {
-    const saved = localStorage.getItem('hott_rossi_products');
-    return saved ? JSON.parse(saved) : initialProducts;
-  });
-
-  const [allAddons, setAllAddons] = useState<Addon[]>(() => {
-    const saved = localStorage.getItem('hott_rossi_addons');
-    return saved ? JSON.parse(saved) : [];
-  });
-
-  const [settings, setSettings] = useState<AppSettings>(() => {
-    const saved = localStorage.getItem('hott_rossi_settings');
-    return saved ? JSON.parse(saved) : {
-      shopName: 'Hott Rossi',
-      logoUrl: '',
-      promoBanner: 'Seja bem-vindo ao nosso cardápio digital! 🍕',
-      whatsappNumber: ''
-    };
-  });
-
-  useEffect(() => {
-    localStorage.setItem('hott_rossi_products', JSON.stringify(allProducts));
-  }, [allProducts]);
-
-  useEffect(() => {
-    localStorage.setItem('hott_rossi_addons', JSON.stringify(allAddons));
-  }, [allAddons]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     localStorage.setItem('hott_rossi_settings', JSON.stringify(settings));
-  }, [settings]);
+    if (!loading) {
+      supabase.from("settings").upsert({ ...settings, id: 1 }).then(({ error }) => {
+        if (error) console.error("Error syncing settings:", error);
+      });
+    }
+  }, [settings, loading]);
 
   const filteredProducts = useMemo(() => {
     let result = allProducts;
