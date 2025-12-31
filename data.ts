@@ -89,4 +89,4 @@ export const products: Product[] = [
   }
 ];
 
-export const categories: Category[] = ['Pizzas', 'Combos', 'Pastéis', 'Bebidas', 'Sobremesas'];
+export const categories: Category[] = ['Pizzas', 'Pastéis', 'Combos', 'Bebidas', 'Sobremesas'];

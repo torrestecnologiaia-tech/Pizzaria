@@ -264,6 +264,7 @@ const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose, products, addo
                             className="bg-white dark:bg-background-dark rounded-xl h-12 px-4 text-white outline-none focus:ring-1 focus:ring-primary/50"
                         >
                             <option value="Pizzas">Pizzas</option>
+                            <option value="Pastéis">Pastéis</option>
                             <option value="Combos">Combos</option>
                             <option value="Bebidas">Bebidas</option>
                             <option value="Sobremesas">Sobremesas</option>
