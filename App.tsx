@@ -36,74 +36,9 @@ const App: React.FC = () => {
     };
   });
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        // Fetch products
-        const { data: productsData, error: productsError } = await supabase
-          .from("products")
-          .select("*")
-          .order("name");
-        
-        if (!productsError && productsData && productsData.length > 0) {
-          setAllProducts(productsData);
-        }
-
-        // Fetch addons
-        const { data: addonsData, error: addonsError } = await supabase
-          .from("addons")
-          .select("*");
-        
-        if (!addonsError && addonsData && addonsData.length > 0) {
-          setAllAddons(addonsData);
-        }
-
-        // Fetch settings
-        const { data: settingsData, error: settingsError } = await supabase
-          .from("settings")
-          .select("*")
-          .single();
-        
-        if (!settingsError && settingsData) {
-          setSettings(settingsData);
-        }
-      } catch (err) {
-        console.error("Error fetching from Supabase:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-  }, []);
-
-  useEffect(() => {
-    localStorage.setItem('hott_rossi_products', JSON.stringify(allProducts));
-    if (!loading) {
-      supabase.from("products").upsert(allProducts).then(({ error }) => {
-        if (error) console.error("Error syncing products:", error);
-      });
-    }
-  }, [allProducts, loading]);
-
-  useEffect(() => {
-    localStorage.setItem('hott_rossi_addons', JSON.stringify(allAddons));
-    if (!loading) {
-      supabase.from("addons").upsert(allAddons).then(({ error }) => {
-        if (error) console.error("Error syncing addons:", error);
-      });
-    }
-  }, [allAddons, loading]);
-
-  useEffect(() => {
+        useEffect(() => {
     localStorage.setItem('hott_rossi_settings', JSON.stringify(settings));
-    if (!loading) {
-      supabase.from("settings").upsert({ ...settings, id: 1 }).then(({ error }) => {
-        if (error) console.error("Error syncing settings:", error);
-      });
-    }
-  }, [settings, loading]);
+  }, [settings]);
 
   const filteredProducts = useMemo(() => {
     let result = allProducts;

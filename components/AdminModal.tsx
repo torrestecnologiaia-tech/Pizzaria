@@ -1,3 +1,4 @@
+import { supabase } from '../lib/supabase';
 
 import React, { useState, useRef } from 'react';
 import { Product, Category, Addon, AppSettings } from '../types';
@@ -54,25 +55,25 @@ const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose, products, addo
         if (target === 'product') {
           setNewProduct(prev => ({ ...prev, imageUrl: reader.result as string }));
         } else {
-          onUpdateSettings({ ...settings, logoUrl: reader.result as string });
+          const updated = { ...settings, logoUrl: reader.result as string }; onUpdateSettings(updated); supabase.from("settings").upsert({ ...updated, id: 1 }).then();
         }
       };
       reader.readAsDataURL(file);
     }
   };
 
-  const toggleProductFlag = (id: string, flag: 'isPromo' | 'isBestSeller') => {
-    onUpdateProducts(products.map(p => {
-      if (p.id === id) {
-        const newVal = !p[flag];
-        return { 
-          ...p, 
-          [flag]: newVal,
-          promoText: flag === 'isPromo' && newVal ? 'Promoção' : (flag === 'isBestSeller' && newVal ? 'Destaque' : p.promoText)
-        };
-      }
-      return p;
-    }));
+    const toggleProductFlag = async (id: string, flag: 'isPromo' | 'isBestSeller') => {
+    const product = products.find(p => p.id === id);
+    if (!product) return;
+    
+    const newVal = !product[flag];
+    const promoText = flag === 'isPromo' && newVal ? 'Promoção' : (flag === 'isBestSeller' && newVal ? 'Destaque' : product.promoText);
+    
+    // Optimistic Update
+    onUpdateProducts(products.map(p => p.id === id ? { ...p, [flag]: newVal, promoText } : p));
+    
+    // DB Update
+    await supabase.from("products").update({ [flag]: newVal, promoText }).eq("id", id);
   };
 
   const toggleAddonForProduct = (productId: string, addonId: string) => {
@@ -89,46 +90,51 @@ const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose, products, addo
   };
 
   
-  const addInlineAddon = (productId: string) => {
+    const addInlineAddon = async (productId: string) => {
     if (!inlineAddon.name || !inlineAddon.price) {
         alert("Preencha Nome e Preço!");
         return;
     }
     const newId = Date.now().toString();
-    const addon: Addon = { 
+    const addon = { 
         id: newId, 
         name: inlineAddon.name, 
         price: Number(inlineAddon.price) 
     };
     
-    // Add to global addons
+    // DB Insert
+    await supabase.from("addons").insert([addon]);
+    
+    // Update local state and product link
     onUpdateAddons([...addons, addon]);
     
-    // Link to product
-    onUpdateProducts(products.map(p => {
-      if (p.id === productId) {
-        return { ...p, addons: [...(p.addons || []), newId] };
-      }
-      return p;
-    }));
+    const product = products.find(p => p.id === productId);
+    const newAddonsArr = [...(product?.addons || []), newId];
+    
+    onUpdateProducts(products.map(p => p.id === productId ? { ...p, addons: newAddonsArr } : p));
+    await supabase.from("products").update({ addons: newAddonsArr }).eq("id", productId);
     
     setInlineAddon({ name: '', price: '' });
   };
 
-  const addProduct = () => {
+    const addProduct = async () => {
     if (!newProduct.name || !newProduct.price) {
         alert("Preencha ao menos Nome e Preço!");
         return;
     }
-    const product: Product = {
+    const product = {
       id: Date.now().toString(),
-      name: newProduct.name!,
+      name: newProduct.name,
       description: newProduct.description || '',
       price: Number(newProduct.price),
-      category: newProduct.category as Category,
+      category: newProduct.category,
       imageUrl: newProduct.imageUrl || 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=400',
       addons: []
     };
+    
+    // DB Insert
+    await supabase.from("products").insert([product]);
+    
     onUpdateProducts([...products, product]);
     setNewProduct({ 
         name: '',
@@ -141,23 +147,45 @@ const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose, products, addo
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  const removeProduct = (id: string) => {
-    if(confirm("Excluir produto?")) onUpdateProducts(products.filter(p => p.id !== id));
+    const removeProduct = async (id: string) => {
+    if(confirm("Excluir produto?")) {
+        // DB Delete
+        await supabase.from("products").delete().eq("id", id);
+        onUpdateProducts(products.filter(p => p.id !== id));
+    }
   };
 
-  const addAddon = () => {
+    const addAddon = async () => {
     if (!newAddon.name || !newAddon.price) return;
-    onUpdateAddons([...addons, { id: Date.now().toString(), name: newAddon.name!, price: Number(newAddon.price) }]);
+    const addon = { id: Date.now().toString(), name: newAddon.name, price: Number(newAddon.price) };
+    
+    // DB Insert
+    await supabase.from("addons").insert([addon]);
+    
+    onUpdateAddons([...addons, addon]);
     setNewAddon({});
   };
 
-  const removeAddon = (id: string) => {
+    const removeAddon = async (id: string) => {
     if(confirm("Excluir sub-produto?")) {
+      // DB Delete
+      await supabase.from("addons").delete().eq("id", id);
+      
       onUpdateAddons(addons.filter(a => a.id !== id));
-      onUpdateProducts(products.map(p => ({
+      
+      const updatedProducts = products.map(p => ({
         ...p,
         addons: p.addons?.filter(aid => aid !== id)
-      })));
+      }));
+      
+      onUpdateProducts(updatedProducts);
+      
+      // Update all products in DB to removed this addon from their lists
+      for (const p of updatedProducts) {
+          if (p.addons && p.addons.length !== products.find(op => op.id === p.id).addons?.length) {
+              await supabase.from("products").update({ addons: p.addons }).eq("id", p.id);
+          }
+      }
     }
   };
 
@@ -372,24 +400,24 @@ const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose, products, addo
                          <input ref={logoInputRef} type="file" className="hidden" accept="image/*" onChange={(e) => handleFileChange(e, 'logo')} />
                       </label>
                     </div>
-                    {settings.logoUrl && <button onClick={() => onUpdateSettings({...settings, logoUrl: ''})} className="text-[10px] text-red-500 font-bold uppercase">Remover Logo</button>}
+                    {settings.logoUrl && <button onClick={() => { const updated = {...settings, logoUrl: ''}; onUpdateSettings(updated); supabase.from("settings").upsert({ ...updated, id: 1 }).then(); }} className="text-[10px] text-red-500 font-bold uppercase">Remover Logo</button>}
                  </div>
                  <div className="space-y-4">
                     <div className="space-y-2">
                        <label className="text-xs font-bold text-neutral-400 uppercase ml-1">Nome da Loja</label>
-                       <input value={settings.shopName} onChange={(e) => onUpdateSettings({ ...settings, shopName: e.target.value })} className="w-full bg-white dark:bg-background-dark rounded-xl h-14 px-5 text-white outline-none focus:ring-1 focus:ring-primary/50" />
+                       <input value={settings.shopName} onChange={(e) => { const updated = { ...settings, shopName: e.target.value }; onUpdateSettings(updated); supabase.from("settings").upsert({ ...updated, id: 1 }).then(); }} className="w-full bg-white dark:bg-background-dark rounded-xl h-14 px-5 text-white outline-none focus:ring-1 focus:ring-primary/50" />
                     </div>
                     <div className="space-y-2">
                        <label className="text-xs font-bold text-primary uppercase ml-1 flex items-center gap-2">
                          <span className="material-symbols-outlined text-sm">campaign</span> Aviso de Promoção (Topo)
                        </label>
-                       <input value={settings.promoBanner || ''} onChange={(e) => onUpdateSettings({ ...settings, promoBanner: e.target.value })} placeholder="Ex: Entrega grátis hoje!" className="w-full bg-primary/5 border border-primary/20 rounded-xl h-14 px-5 text-primary font-bold outline-none focus:ring-1 focus:ring-primary/50" />
+                       <input value={settings.promoBanner || ''} onChange={(e) => { const updated = { ...settings, promoBanner: e.target.value }; onUpdateSettings(updated); supabase.from("settings").upsert({ ...updated, id: 1 }).then(); }} placeholder="Ex: Entrega grátis hoje!" className="w-full bg-primary/5 border border-primary/20 rounded-xl h-14 px-5 text-primary font-bold outline-none focus:ring-1 focus:ring-primary/50" />
                     </div>
                     <div className="space-y-2">
                        <label className="text-xs font-bold text-green-500 uppercase ml-1 flex items-center gap-2">
                          <span className="material-symbols-outlined text-sm">phone_iphone</span> WhatsApp da Loja (Para receber pedidos)
                        </label>
-                       <input value={settings.whatsappNumber || ''} onChange={(e) => onUpdateSettings({ ...settings, whatsappNumber: e.target.value })} placeholder="Ex: 5511999999999" className="w-full bg-green-500/5 border border-green-500/20 rounded-xl h-14 px-5 text-green-500 font-bold outline-none focus:ring-1 focus:ring-green-500/50" />
+                       <input value={settings.whatsappNumber || ''} onChange={(e) => { const updated = { ...settings, whatsappNumber: e.target.value }; onUpdateSettings(updated); supabase.from("settings").upsert({ ...updated, id: 1 }).then(); }} placeholder="Ex: 5511999999999" className="w-full bg-green-500/5 border border-green-500/20 rounded-xl h-14 px-5 text-green-500 font-bold outline-none focus:ring-1 focus:ring-green-500/50" />
                        <p className="text-[9px] text-neutral-500 ml-1">Insira apenas números com DDD (Ex: 5511...)</p>
                     </div>
                  </div>
