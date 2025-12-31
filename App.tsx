@@ -32,7 +32,7 @@ const App: React.FC = () => {
       shopName: 'Hott Rossi',
       logoUrl: '',
       promoBanner: 'Seja bem-vindo ao nosso cardápio digital! 🍕',
-      whatsappNumber: ''
+      whatsappNumber: '5511992525810'
     };
   });
 
