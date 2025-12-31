@@ -48,7 +48,7 @@ const CartModal: React.FC<CartModalProps> = ({ isOpen, onClose, items, onUpdateQ
     
     let paymentLabel = "";
     switch(formData.pagamento) {
-      case "pix": paymentLabel = "💠 *Pix*"; break;
+      case "pix": paymentLabel = "💠 *Pix (Chave CPF: 30507986881)*"; break;
       case "credito": paymentLabel = "💳 *Cartão de Crédito*"; break;
       case "debito": paymentLabel = "💳 *Cartão de Débito*"; break;
       case "dinheiro": paymentLabel = "💵 *Dinheiro* " + (formData.troco ? "(Troco para R$ " + formData.troco + ")" : "(Não precisa de troco)"); break;
@@ -194,12 +194,16 @@ const CartModal: React.FC<CartModalProps> = ({ isOpen, onClose, items, onUpdateQ
               )}
 
               {formData.pagamento === 'pix' && (
-                <div className="p-5 bg-primary/5 rounded-2xl border-2 border-primary/20 flex flex-col items-center gap-2 animate-in slide-in-from-top-4 duration-300">
+                <div className="p-5 bg-primary/5 rounded-2xl border-2 border-primary/20 flex flex-col items-center gap-3 animate-in slide-in-from-top-4 duration-300">
                   <div className="flex items-center gap-2 text-primary">
                     <span className="material-symbols-outlined text-sm">info</span>
                     <p className="text-[10px] font-black uppercase tracking-widest">Pagamento via Pix</p>
                   </div>
-                  <p className="text-neutral-900 dark:text-white font-mono font-bold text-xl tracking-wider select-all text-center">O comprovante deve ser enviado no WhatsApp após o pedido.</p>
+                  <div className="text-center">
+                    <p className="text-xs text-neutral-500 dark:text-gray-400 font-bold uppercase tracking-widest mb-1">Chave CPF:</p>
+                    <p className="text-neutral-900 dark:text-white font-mono font-black text-2xl tracking-widest select-all">30507986881</p>
+                  </div>
+                  <p className="text-[10px] text-neutral-500 dark:text-gray-500 font-medium text-center italic">O comprovante deve ser enviado no WhatsApp após o pedido.</p>
                 </div>
               )}
             </div>
