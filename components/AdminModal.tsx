@@ -33,6 +33,7 @@ const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose, products, addo
     addons: [] 
   });
   const [newAddon, setNewAddon] = useState<Partial<Addon>>({});
+  const [inlineAddon, setInlineAddon] = useState<{name: string, price: string}>({ name: '', price: '' });
 
   if (!isOpen) return null;
 
@@ -85,6 +86,33 @@ const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose, products, addo
       }
       return p;
     }));
+  };
+
+  
+  const addInlineAddon = (productId: string) => {
+    if (!inlineAddon.name || !inlineAddon.price) {
+        alert("Preencha Nome e Preço!");
+        return;
+    }
+    const newId = Date.now().toString();
+    const addon: Addon = { 
+        id: newId, 
+        name: inlineAddon.name, 
+        price: Number(inlineAddon.price) 
+    };
+    
+    // Add to global addons
+    onUpdateAddons([...addons, addon]);
+    
+    // Link to product
+    onUpdateProducts(products.map(p => {
+      if (p.id === productId) {
+        return { ...p, addons: [...(p.addons || []), newId] };
+      }
+      return p;
+    }));
+    
+    setInlineAddon({ name: '', price: '' });
   };
 
   const addProduct = () => {
@@ -254,7 +282,33 @@ const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose, products, addo
 
                        {editingAddonsFor === p.id && (
                          <div className="grid grid-cols-1 gap-2 p-3 bg-black/20 rounded-xl animate-in fade-in slide-in-from-top-2 duration-200">
-                           <p className="text-[10px] text-neutral-500 font-bold uppercase mb-1">Selecione os adicionais permitidos:</p>
+                           {/* Formulário Inline */}
+                           <div className="flex flex-col gap-2 mb-3 pb-3 border-b border-white/5">
+                             <p className="text-[10px] text-primary font-bold uppercase">Cadastrar novo para este produto:</p>
+                             <div className="flex gap-2">
+                               <input 
+                                 placeholder="Nome (Ex: Borda Choco)" 
+                                 value={inlineAddon.name}
+                                 onChange={e => setInlineAddon({...inlineAddon, name: e.target.value})}
+                                 className="flex-1 bg-white/5 rounded-lg h-9 px-3 text-xs text-white outline-none focus:ring-1 focus:ring-primary/30" 
+                               />
+                               <input 
+                                 type="number" 
+                                 placeholder="R$" 
+                                 value={inlineAddon.price}
+                                 onChange={e => setInlineAddon({...inlineAddon, price: e.target.value})}
+                                 className="w-16 bg-white/5 rounded-lg h-9 px-2 text-xs text-white outline-none focus:ring-1 focus:ring-primary/30" 
+                               />
+                               <button 
+                                 onClick={() => addInlineAddon(p.id)}
+                                 className="bg-primary hover:bg-primary/80 text-white px-3 rounded-lg text-xs font-bold transition-colors"
+                               >
+                                 Add
+                               </button>
+                             </div>
+                           </div>
+                           
+                           <p className="text-[10px] text-neutral-500 font-bold uppercase mb-1">Ou selecione um já cadastrado:</p>
                            {addons.length > 0 ? addons.map(addon => (
                              <button 
                                key={addon.id}
