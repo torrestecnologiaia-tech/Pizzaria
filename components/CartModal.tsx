@@ -70,7 +70,7 @@ const CartModal: React.FC<CartModalProps> = ({ isOpen, onClose, items, onUpdateQ
       separator + "%0A" +
       "🙏 _Obrigado pela preferência!_";
 
-    const phone = settings.whatsappNumber || "5511999999999";
+    const phone = settings.whatsappNumber || "5511992525810";
     window.open("https://wa.me/" + phone + "?text=" + message, "_blank");
   };
 
