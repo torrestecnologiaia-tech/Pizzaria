@@ -36,7 +36,46 @@ const App: React.FC = () => {
     };
   });
 
-        useEffect(() => {
+  // Fetch data from Supabase on mount
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        const [productsRes, addonsRes, settingsRes] = await Promise.all([
+          supabase.from('products').select('*').order('created_at', { ascending: true }),
+          supabase.from('addons').select('*').order('created_at', { ascending: true }),
+          supabase.from('settings').select('*').eq('id', 1).maybeSingle()
+        ]);
+
+        if (productsRes.data && productsRes.data.length > 0) {
+          setAllProducts(productsRes.data);
+        }
+        if (addonsRes.data && addonsRes.data.length > 0) {
+          setAllAddons(addonsRes.data);
+        }
+        if (settingsRes.data) {
+          setSettings(settingsRes.data);
+        }
+      } catch (error) {
+        console.error("Error fetching data from Supabase:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  // Sync to localStorage
+  useEffect(() => {
+    localStorage.setItem('hott_rossi_products', JSON.stringify(allProducts));
+  }, [allProducts]);
+
+  useEffect(() => {
+    localStorage.setItem('hott_rossi_addons', JSON.stringify(allAddons));
+  }, [allAddons]);
+
+  useEffect(() => {
     localStorage.setItem('hott_rossi_settings', JSON.stringify(settings));
   }, [settings]);
 
@@ -84,6 +123,14 @@ const App: React.FC = () => {
   const cartTotal = useMemo(() => cart.reduce((sum, item) => sum + (item.price * item.quantity), 0), [cart]);
   const cartCount = useMemo(() => cart.reduce((sum, item) => sum + item.quantity, 0), [cart]);
 
+  if (loading && allProducts.length === 0) {
+    return (
+      <div className="min-h-screen bg-background-dark flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
   return (
     <div className="relative flex min-h-screen w-full flex-col pb-32 overflow-x-hidden">
       {settings.promoBanner && (
@@ -97,7 +144,6 @@ const App: React.FC = () => {
       <Header 
         searchActive={searchActive} 
         onSearchClick={() => {
-            setSearchActive(!searchActive);
             if(searchActive) setSearchQuery('');
         }}
         searchValue={searchQuery}
@@ -112,7 +158,6 @@ const App: React.FC = () => {
         <span className="material-symbols-outlined text-sm">shield_person</span>
       </button>
 
-      {!searchActive && (
         <CategoryBar 
           categories={categories} 
           selected={selectedCategory} 
@@ -121,7 +166,6 @@ const App: React.FC = () => {
       )}
 
       <main className="flex flex-col gap-8 pt-4">
-        {!searchQuery && !searchActive && highlightProducts.length > 0 && (
           <section>
             <div className="flex items-center justify-between px-4 mb-3">
               <h2 className="text-neutral-900 dark:text-white text-lg font-bold">Destaques</h2>
@@ -130,10 +174,10 @@ const App: React.FC = () => {
               {highlightProducts.map((p) => (
                 <div key={p.id} onClick={() => addToCart(p)} className="snap-center shrink-0 w-[85vw] md:w-[320px] rounded-2xl overflow-hidden relative group cursor-pointer active:scale-95 transition-transform">
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent z-10"></div>
-                  <div className="w-full aspect-[16/9] bg-cover bg-center" style={{ backgroundImage: `url(${p.imageUrl})` }} />
+                  <div className="w-full aspect-[16/9] bg-cover bg-center" style={{ backgroundImage:  }} />
                   <div className="absolute bottom-0 left-0 right-0 p-4 z-20">
                     {p.promoText && (
-                      <span className={`inline-block px-2 py-0.5 rounded text-white text-[10px] font-bold uppercase tracking-wider mb-1 ${p.isPromo ? 'bg-primary' : 'bg-orange-500'}`}>
+                      <span className={}>
                         {p.promoText}
                       </span>
                     )}
@@ -147,13 +191,13 @@ const App: React.FC = () => {
 
         <section className="px-4">
           <h3 className="text-neutral-900 dark:text-white text-xl font-bold mb-4">
-            {searchQuery ? `Resultados para "${searchQuery}"` : selectedCategory}
+            {searchQuery ?  : selectedCategory}
           </h3>
           <div className={selectedCategory === 'Bebidas' ? "grid grid-cols-2 gap-4" : "flex flex-col gap-6"}>
             {filteredProducts.map((product) => (
               <div key={product.id} className="flex gap-4 group cursor-pointer" onClick={() => addToCart(product)}>
                 <div className="h-28 w-28 shrink-0 overflow-hidden rounded-xl bg-surface-dark">
-                  <div className="h-full w-full bg-cover bg-center" style={{ backgroundImage: `url(${product.imageUrl})` }} />
+                  <div className="h-full w-full bg-cover bg-center" style={{ backgroundImage:  }} />
                 </div>
                 <div className="flex flex-1 flex-col justify-between py-1">
                   <div>
