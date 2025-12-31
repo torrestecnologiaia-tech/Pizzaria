@@ -1,5 +1,4 @@
-
-export type Category = 'Pizzas' | 'Combos' | 'Bebidas' | 'Sobremesas';
+export type Category = 'Pizzas' | 'Combos' | 'Pastéis' | 'Bebidas' | 'Sobremesas';
 
 export interface Addon {
   id: string;

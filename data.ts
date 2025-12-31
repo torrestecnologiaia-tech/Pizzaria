@@ -1,4 +1,3 @@
-
 // Add Category to imports to fix type error
 import { Product, Category } from './types';
 
@@ -71,7 +70,23 @@ export const products: Product[] = [
     price: 24.90,
     category: 'Sobremesas',
     imageUrl: 'https://picsum.photos/400/400?random=1'
+  },
+  {
+    id: 'pt-carne',
+    name: 'Pastel de Carne',
+    description: 'Carne moída temperada com especiarias da casa.',
+    price: 12.00,
+    category: 'Pastéis',
+    imageUrl: 'https://images.unsplash.com/photo-1626379616459-b2ce1d9decbb?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80'
+  },
+  {
+    id: 'pt-queijo',
+    name: 'Pastel de Queijo',
+    description: 'Mussarela derretida com um toque de orégano.',
+    price: 11.00,
+    category: 'Pastéis',
+    imageUrl: 'https://images.unsplash.com/photo-1626379616459-b2ce1d9decbb?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80'
   }
 ];
 
-export const categories: Category[] = ['Pizzas', 'Combos', 'Bebidas', 'Sobremesas'];
+export const categories: Category[] = ['Pizzas', 'Combos', 'Pastéis', 'Bebidas', 'Sobremesas'];
