@@ -36,37 +36,93 @@ const App: React.FC = () => {
     };
   });
 
+  const mapSupabaseData = <T extends any>(data: T[]): T[] => {
+    if (!data) return [];
+    return data.map(item => {
+      const mapped: any = { ...item };
+      if (item.imageurl !== undefined) mapped.imageUrl = item.imageurl;
+      if (item.ispromo !== undefined) mapped.isPromo = item.ispromo;
+      if (item.isbestseller !== undefined) mapped.isBestSeller = item.isbestseller;
+      if (item.promotext !== undefined) mapped.promoText = item.promotext;
+      if (item.shopname !== undefined) mapped.shopName = item.shopname;
+      if (item.logourl !== undefined) mapped.logoUrl = item.logourl;
+      if (item.promobanner !== undefined) mapped.promoBanner = item.promobanner;
+      if (item.whatsappnumber !== undefined) mapped.whatsappNumber = item.whatsappnumber;
+      if (item.pixkey !== undefined) mapped.pixKey = item.pixkey;
+      return mapped as T;
+    });
+  };
+
   // Fetch data from Supabase on mount
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
       try {
         const [productsRes, addonsRes, settingsRes] = await Promise.all([
-          supabase.from('products').select('*').order('created_at', { ascending: true }),
-          supabase.from('addons').select('*').order('created_at', { ascending: true }),
-          supabase.from('settings').select('*').eq('id', 1).maybeSingle()
+          supabase.from("products").select("*").order("created_at", { ascending: true }),
+          supabase.from("addons").select("*").order("created_at", { ascending: true }),
+          supabase.from("settings").select("*").eq("id", 1).maybeSingle()
         ]);
 
-        if (productsRes.data && productsRes.data.length > 0) {
-          setAllProducts(productsRes.data);
+        if (productsRes.data) {
+          setAllProducts(mapSupabaseData(productsRes.data));
         }
-        if (addonsRes.data && addonsRes.data.length > 0) {
-          setAllAddons(addonsRes.data);
+        if (addonsRes.data) {
+          setAllAddons(mapSupabaseData(addonsRes.data));
         }
         if (settingsRes.data) {
-          setSettings(settingsRes.data);
+          setSettings(mapSupabaseData([settingsRes.data])[0] as AppSettings);
         }
       } catch (error) {
-        console.error("Error fetching data from Supabase:", error);
+        console.error("ERRO CRÍTICO SUPABASE:", error);
       } finally {
         setLoading(false);
       }
     };
 
     fetchData();
+
+    // Set up Realtime listeners
+    const productsSubscription = supabase
+      .channel("products-changes")
+      .on("postgres_changes", { event: "*", schema: "public", table: "products" }, (payload) => {
+        if (payload.eventType === "INSERT") {
+          setAllProducts(prev => [...prev, mapSupabaseData([payload.new])[0] as Product]);
+        } else if (payload.eventType === "UPDATE") {
+          setAllProducts(prev => prev.map(p => p.id === payload.new.id ? mapSupabaseData([payload.new])[0] as Product : p));
+        } else if (payload.eventType === "DELETE") {
+          setAllProducts(prev => prev.filter(p => p.id !== payload.old.id));
+        }
+      })
+      .subscribe();
+
+    const addonsSubscription = supabase
+      .channel("addons-changes")
+      .on("postgres_changes", { event: "*", schema: "public", table: "addons" }, (payload) => {
+        if (payload.eventType === "INSERT") {
+          setAllAddons(prev => [...prev, mapSupabaseData([payload.new])[0] as Addon]);
+        } else if (payload.eventType === "UPDATE") {
+          setAllAddons(prev => prev.map(a => a.id === payload.new.id ? mapSupabaseData([payload.new])[0] as Addon : a));
+        } else if (payload.eventType === "DELETE") {
+          setAllAddons(prev => prev.filter(a => a.id !== payload.old.id));
+        }
+      })
+      .subscribe();
+
+    const settingsSubscription = supabase
+      .channel("settings-changes")
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "settings", filter: "id=eq.1" }, (payload) => {
+        setSettings(mapSupabaseData([payload.new])[0] as AppSettings);
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(productsSubscription);
+      supabase.removeChannel(addonsSubscription);
+      supabase.removeChannel(settingsSubscription);
+    };
   }, []);
 
-  // Sync to localStorage
   useEffect(() => {
     localStorage.setItem('hott_rossi_products', JSON.stringify(allProducts));
   }, [allProducts]);
@@ -79,15 +135,17 @@ const App: React.FC = () => {
     localStorage.setItem('hott_rossi_settings', JSON.stringify(settings));
   }, [settings]);
 
+  const normalizeCategory = (cat: string) => cat ? cat.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim() : "";
+
   const filteredProducts = useMemo(() => {
     let result = allProducts;
     if (searchQuery) {
       result = result.filter(p => 
         p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-        p.description.toLowerCase().includes(searchQuery.toLowerCase())
+        (p.description && p.description.toLowerCase().includes(searchQuery.toLowerCase()))
       );
     } else {
-      result = result.filter(p => p.category === selectedCategory);
+      result = result.filter(p => normalizeCategory(p.category) === normalizeCategory(selectedCategory));
     }
     return result;
   }, [selectedCategory, searchQuery, allProducts]);
@@ -144,6 +202,7 @@ const App: React.FC = () => {
       <Header 
         searchActive={searchActive} 
         onSearchClick={() => {
+            setSearchActive(!searchActive);
             if(searchActive) setSearchQuery('');
         }}
         searchValue={searchQuery}
@@ -158,6 +217,7 @@ const App: React.FC = () => {
         <span className="material-symbols-outlined text-sm">shield_person</span>
       </button>
 
+      {!searchQuery && (
         <CategoryBar 
           categories={categories} 
           selected={selectedCategory} 
@@ -166,6 +226,7 @@ const App: React.FC = () => {
       )}
 
       <main className="flex flex-col gap-8 pt-4">
+        {!searchQuery && !searchActive && highlightProducts.length > 0 && (
           <section>
             <div className="flex items-center justify-between px-4 mb-3">
               <h2 className="text-neutral-900 dark:text-white text-lg font-bold">Destaques</h2>
@@ -174,10 +235,10 @@ const App: React.FC = () => {
               {highlightProducts.map((p) => (
                 <div key={p.id} onClick={() => addToCart(p)} className="snap-center shrink-0 w-[85vw] md:w-[320px] rounded-2xl overflow-hidden relative group cursor-pointer active:scale-95 transition-transform">
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent z-10"></div>
-                  <div className="w-full aspect-[16/9] bg-cover bg-center" style={{ backgroundImage:  }} />
+                  <div className="w-full aspect-[16/9] bg-cover bg-center" style={{ backgroundImage: `url(${p.imageUrl})` }} />
                   <div className="absolute bottom-0 left-0 right-0 p-4 z-20">
                     {p.promoText && (
-                      <span className={}>
+                      <span className={`inline-block px-2 py-0.5 rounded text-white text-[10px] font-bold uppercase tracking-wider mb-1 ${p.isPromo ? "bg-primary" : "bg-orange-500"}`}>
                         {p.promoText}
                       </span>
                     )}
@@ -191,13 +252,13 @@ const App: React.FC = () => {
 
         <section className="px-4">
           <h3 className="text-neutral-900 dark:text-white text-xl font-bold mb-4">
-            {searchQuery ?  : selectedCategory}
+            {searchQuery ? `Resultados para "${searchQuery}"` : selectedCategory}
           </h3>
           <div className={selectedCategory === 'Bebidas' ? "grid grid-cols-2 gap-4" : "flex flex-col gap-6"}>
             {filteredProducts.map((product) => (
               <div key={product.id} className="flex gap-4 group cursor-pointer" onClick={() => addToCart(product)}>
                 <div className="h-28 w-28 shrink-0 overflow-hidden rounded-xl bg-surface-dark">
-                  <div className="h-full w-full bg-cover bg-center" style={{ backgroundImage:  }} />
+                  <div className="h-full w-full bg-cover bg-center" style={{ backgroundImage: `url(${product.imageUrl})` }} />
                 </div>
                 <div className="flex flex-1 flex-col justify-between py-1">
                   <div>
